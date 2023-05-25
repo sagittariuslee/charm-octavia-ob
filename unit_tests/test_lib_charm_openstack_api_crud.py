@@ -346,6 +346,24 @@ class TestAPICrud(test_utils.PatchHelper):
              'up', 'address', port_mac_address])
         self.toggle_hm_port.assert_called
 
+        # Unit test snippet for mtu matching
+        # This is also related to my another task, see onboarding task doc row #35, and
+        # SF#359593: https://bootstack.canonical.com/cases/359593
+        # https://docs.google.com/document/d/1bWYQdkOkMQU5bUMthfIPsGgzHou8WkJSAO4ctCIJu2Q/edit
+        # https://discourse.canonical.com/t/task-onboarding-summary-for-wubin-li-sagittariuslee/1932
+        mtu_value = 8942
+        nc = mock.MagicMock()
+        self.init_neutron_client.return_value = nc
+        network_uuid = 'fake-network-uuid'
+        nc.list_networks.return_value = {'networks': [{'id': network_uuid,
+                                                       'mtu': mtu_value}]}
+        self.check_call.assert_has_calls([
+            mock.call(['ip', 'link', 'set', 'o-hm0', 'up', 'address',
+                       'fake-mac-address']),
+            mock.call(['ovs-vsctl', 'set', 'Interface', 'o-hm0', 'mtu_request=8942']),
+            mock.call(['ip', 'link', 'set', 'o-hm0', 'mtu', 8942])])
+        ###
+
     def test_get_port_ip_unit_map(self):
         self.patch_object(api_crud, 'session_from_identity_service')
         self.patch_object(api_crud, 'init_neutron_client')
